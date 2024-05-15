@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Accessible Color Pairings</title>
+    <meta name="description" content="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        flex-direction: column;
+        text-align: center;
+        font-family: 'Roboto', sans-serif;
+        transition: background-color 0.5s;
+      }
+      h1 {
+        font-size: 24px;
+        margin: 20px 0;
+      }
+      p {
+        font-size: 16px;
+        margin: 5px 0;
+      }
+      .form-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      input {
+        min-width: 222px;
+      }
+      input,
+      select,
+      button {
+        margin: 5px;
+        padding: 10px;
+        font-size: 16px;
+      }
+      .sr-only {
+        border: 0;
+        clip: rect(0, 0, 0, 0);
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        padding: 0;
+        position: absolute;
+        width: 1px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 id="display-heading"></h1>
+    <div class="form-container">
+      <label for="hex-color" class="sr-only">Hex Color</label>
+      <input
+        type="text"
+        id="hex-color"
+        placeholder="Enter hex color (e.g., #5014A0)"
+      />
+
+      <label for="color-type" class="sr-only">Color Type</label>
+      <select id="color-type">
+        <option value="foreground">Foreground</option>
+        <option value="background">Background</option>
+      </select>
+
+      <button onclick="submitColor()">Submit</button>
+    </div>
+
+    <p id="foreground-color"></p>
+    <p id="background-color"></p>
+    <p id="contrast-ratio"></p>
+
+    <script>
+      function hexToRgb(hex) {
+        let bigint = parseInt(hex.slice(1), 16)
+        let r = (bigint >> 16) & 255
+        let g = (bigint >> 8) & 255
+        let b = bigint & 255
+        return [r, g, b]
+      }
+
+      function rgbToHex(r, g, b) {
+        return (
+          '#' +
+          ((1 << 24) + (r << 16) + (g << 8) + b)
+            .toString(16)
+            .slice(1)
+            .toUpperCase()
+        )
+      }
+
+      function luminance([r, g, b]) {
+        let [rs, gs, bs] = [r, g, b].map((v) => {
+          v /= 255
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+        })
+        return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs
+      }
+
+      function contrastRatio(lum1, lum2) {
+        return (Math.max(lum1, lum2) + 0.05) / (Math.min(lum1, lum2) + 0.05)
+      }
+
+      function randomHexColor() {
+        let hex = Math.floor(Math.random() * 0xffffff)
+          .toString(16)
+          .padStart(6, '0')
+        return `#${hex.toUpperCase()}`
+      }
+
+      function generateMatchingColor(hex, type) {
+        const lum1 = luminance(hexToRgb(hex))
+        let color, lum2, ratio
+        do {
+          color = randomHexColor()
+          lum2 = luminance(hexToRgb(color))
+          ratio = contrastRatio(lum1, lum2)
+        } while (ratio < 7)
+
+        return type === 'foreground'
+          ? { color1: hex, color2: color, contrastRatio: ratio.toFixed(2) }
+          : { color1: color, color2: hex, contrastRatio: ratio.toFixed(2) }
+      }
+
+      function applyColors(colors) {
+        document.body.style.backgroundColor = colors.color2
+        const heading = document.getElementById('display-heading')
+        heading.style.color = colors.color1
+        heading.textContent = `Foreground Color: ${colors.color1} | Background Color: ${colors.color2}`
+
+        const foregroundColor = document.getElementById('foreground-color')
+        foregroundColor.textContent = `Foreground Color: ${colors.color1}`
+
+        const backgroundColor = document.getElementById('background-color')
+        backgroundColor.textContent = `Background Color: ${colors.color2}`
+
+        const contrastRatio = document.getElementById('contrast-ratio')
+        contrastRatio.textContent = `Contrast Ratio: ${colors.contrastRatio}`
+
+        foregroundColor.style.color = colors.color1
+        backgroundColor.style.color = colors.color1
+        contrastRatio.style.color = colors.color1
+      }
+
+      function submitColor() {
+        const hex = document.getElementById('hex-color').value
+        const type = document.getElementById('color-type').value
+        if (/^#[0-9A-F]{6}$/i.test(hex)) {
+          const matchingColors = generateMatchingColor(hex, type)
+          applyColors(matchingColors)
+        } else {
+          alert('Please enter a valid hex color code.')
+        }
+      }
+    </script>
+  </body>
+</html>
